@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Simule a rentabilidade do seu imóvel em locação por temporada e compare com o aluguel tradicional.">
+<meta name="theme-color" content="#8A05BE">
+<meta property="og:title" content="Calculadora HOST">
+<meta property="og:description" content="Simulação de rentabilidade em temporada da HOST Gestão Imobiliária.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Calculadora HOST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<script src="vendor/jspdf.umd.min.js"></script>
+<style>
+/* Layout: cabeçalho com marca + exportar; duas colunas (premissas à esquerda, resultado à direita), uma coluna no celular. Identidade HOST CLARA, tema claro fixo. */
+:root {
+  --bg: #FFFFFF;
+  --lilac: #F4EEFA;
+  --lilac-2: #E9DDF6;
+  --line: #E6DDF0;
+  --purple: #8A05BE;
+  --purple-dark: #6A0393;
+  --ink: #2B2533;
+  --muted: #6E6578;
+  --good: #1E8A4C;
+  --bad: #B3261E;
+  --font: "Poppins", "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand .mark { font-weight: 700; font-size: 26px; letter-spacing: 0.06em; color: var(--purple); }
+.brand .sub { font-size: 13px; color: var(--muted); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button { font-family: inherit; font-size: 14px; cursor: pointer; border-radius: 10px; padding: 10px 16px; border: 1px solid var(--purple); }
+.btn-primary { background: var(--purple); color: #fff; font-weight: 600; }
+.btn-primary:hover { background: var(--purple-dark); }
+.btn-ghost { background: var(--bg); color: var(--purple); }
+.btn-ghost:hover { background: var(--lilac); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srgb, var(--purple) 35%, transparent); outline-offset: 2px; }
+button:disabled { opacity: .6; cursor: wait; }
+
+.intro { padding-block: 24px 8px; }
+.intro h1 { margin: 0; font-size: clamp(24px, 3.4vw, 34px); font-weight: 600; line-height: 1.2; text-wrap: balance; }
+.intro h1 em { font-style: normal; color: var(--purple); }
+.intro p { margin: 8px 0 0; color: var(--muted); max-width: 62ch; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 28px; margin-top: 20px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Premissas */
+.inputs { background: var(--lilac); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 22px; }
+fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+legend { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--purple); margin-bottom: 12px; padding: 0; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label { font-size: 13px; color: var(--ink); }
+.field .hint { font-size: 11.5px; color: var(--muted); }
+.input-box { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.input-box:focus-within { border-color: var(--purple); }
+.input-box span { padding: 0 10px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.input-box input, .input-box select { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 10px 10px; font-variant-numeric: tabular-nums; }
+.input-box input:focus, .input-box select:focus { outline: none; }
+.input-box span + input { padding-left: 0; }
+.field .hint.warn, .hint.warn { color: var(--bad); }
+.check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--purple); margin-top: 2px; flex: none; }
+.small-link { background: none; border: 0; padding: 0; color: var(--purple); font-size: 13px; text-decoration: underline; align-self: flex-start; }
+
+/* Resultado */
+.results { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 560px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+.kpi { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.kpi.hero { background: var(--purple); border-color: var(--purple); color: #fff; }
+.kpi .lab { font-size: 12px; color: var(--muted); }
+.kpi.hero .lab { color: #EBD7F7; }
+.kpi .val { font-size: clamp(22px, 2.6vw, 28px); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.25; margin-top: 4px; }
+.kpi .foot { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi.hero .foot { color: #EBD7F7; }
+
+section.block h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+.bar { display: flex; height: 18px; border-radius: 9px; overflow: hidden; background: var(--lilac); }
+.bar div { height: 100%; transition: width .3s ease; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+table.ledger { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.ledger td { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.ledger td:last-child { text-align: right; white-space: nowrap; padding-left: 12px; }
+.ledger tr.neg td:last-child { color: var(--muted); }
+.ledger tr.total td { border-bottom: 0; border-top: 2px solid var(--purple); font-weight: 600; padding-top: 12px; }
+.ledger tr.total td:last-child { color: var(--purple); font-size: 17px; }
+.ledger .sub { font-size: 12px; color: var(--muted); }
+
+.compare { background: var(--lilac); border-radius: 18px; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 640px) { .compare { grid-template-columns: minmax(0, 1fr); } }
+.compare .ledger td { border-bottom-color: var(--lilac-2); }
+.diff { display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.diff .big { font-size: clamp(26px, 3vw, 34px); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.diff .big.pos { color: var(--good); }
+.diff .big.neg { color: var(--bad); }
+.diff .cap { font-size: 13px; color: var(--muted); }
+.yield { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.yield div { background: var(--bg); border-radius: 12px; padding: 12px; }
+.yield b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.yield b.p { color: var(--purple); }
+.yield span { font-size: 12px; color: var(--muted); }
+
+.note { font-size: 12px; color: var(--muted); max-width: 75ch; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: reduce) { .bar div { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="mark">HOST</span><span class="sub">Gestão Imobiliária</span></div>
+    <div class="actions">
+      <button type="button" class="btn-ghost" id="btnReset">Restaurar exemplo</button>
+      <button type="button" class="btn-primary" id="btnPdf">Exportar PDF</button>
+    </div>
+  </header>
+
+  <div class="intro">
+    <h1>Quanto o seu imóvel rende na <em>temporada</em>?</h1>
+    <p>Preencha as premissas do imóvel. Receita, comissões, despesas e o comparativo com o aluguel tradicional são recalculados na hora. Os valores iniciais são um exemplo.</p>
+  </div>
+
+  <div class="grid">
+    <form class="inputs" id="form" autocomplete="off">
+      <fieldset>
+        <legend>Imóvel</legend>
+        <div class="field">
+          <label for="imovel">Identificação do imóvel</label>
+          <div class="input-box"><input id="imovel" type="text" maxlength="90" placeholder="Ex.: Studio Vila Madalena, 32 m²"></div>
+        </div>
+        <div class="field">
+          <label for="valorImovel">Valor do imóvel</label>
+          <div class="input-box"><span>R$</span><input id="valorImovel" inputmode="decimal" data-kind="money"></div>
+          <span class="hint">Base para a rentabilidade anual.</span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Temporada</legend>
+        <div class="row2">
+          <div class="field">
+            <label for="diaria">Diária média</label>
+            <div class="input-box"><span>R$</span><input id="diaria" inputmode="decimal" data-kind="money"></div>
+          </div>
+          <div class="field">
+            <label for="noites">Noites ocupadas/mês</label>
+            <div class="input-box"><input id="noites" inputmode="numeric" data-kind="int"></div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="reservas">Reservas/mês</label>
+            <div class="input-box"><input id="reservas" inputmode="numeric" data-kind="int"></div>
+          </div>
+          <div class="field">
+            <label for="limpeza">Limpeza por reserva</label>
+            <div class="input-box"><span>R$</span><input id="limpeza" inputmode="decimal" data-kind="money"></div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="plataforma">Comissão plataforma</label>
+            <div class="input-box"><input id="plataforma" inputmode="decimal" data-kind="pct"><span>%</span></div>
+          </div>
+          <div class="field">
+            <label for="custos">Custos fixos/mês</label>
+            <div class="input-box"><span>R$</span><input id="custos" inputmode="decimal" data-kind="money"></div>
+          </div>
+        </div>
+        <span class="hint warn" id="warnNoites" hidden>O mês tem 30 noites. O cálculo usa no máximo 30.</span>
+        <span class="hint warn" id="warnReservas" hidden>Há mais reservas que noites ocupadas. A limpeza é calculada com uma reserva por noite.</span>
+        <span class="hint">Custos fixos: condomínio, IPTU, energia, internet e reposição.</span>
+      </fieldset>
+
+      <fieldset>
+        <legend>Gestão</legend>
+        <div class="field">
+          <label for="gestorModo">Gestão profissional HOST</label>
+          <div class="input-box">
+            <select id="gestorModo">
+              <option value="pos">Sim, % sobre diárias após a plataforma</option>
+              <option value="bruto">Sim, % sobre diárias brutas</option>
+              <option value="nenhum">Não, gestão própria</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" id="gestorPctField">
+          <label for="gestorPct">Comissão da HOST</label>
+          <div class="input-box"><input id="gestorPct" inputmode="decimal" data-kind="pct"><span>%</span></div>
+        </div>
+        <label class="check"><input type="checkbox" id="retemLimpeza"> <span>A taxa de limpeza é repassada à equipe de limpeza</span></label>
+        <span class="hint">Desmarque só se o custo da limpeza já estiver nos custos fixos, para não contar duas vezes nem esquecer o custo.</span>
+      </fieldset>
+
+      <fieldset>
+        <legend>Aluguel tradicional</legend>
+        <div class="row2">
+          <div class="field">
+            <label for="aluguel">Aluguel mensal</label>
+            <div class="input-box"><span>R$</span><input id="aluguel" inputmode="decimal" data-kind="money"></div>
+          </div>
+          <div class="field">
+            <label for="adm">Administradora</label>
+            <div class="input-box"><input id="adm" inputmode="decimal" data-kind="pct"><span>%</span></div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="meses">Duração do contrato</label>
+          <div class="input-box"><input id="meses" inputmode="numeric" data-kind="int"><span>meses</span></div>
+          <span class="hint">O 1º aluguel (taxa de intermediação) é diluído ao longo do contrato. Use 0 para não considerar.</span>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="results">
+      <div class="kpis">
+        <div class="kpi"><div class="lab">Receita bruta</div><div class="val" id="kBruta">—</div><div class="foot">diárias + limpeza</div></div>
+        <div class="kpi hero"><div class="lab">Receita líquida</div><div class="val" id="kLiquida">—</div><div class="foot" id="kMargem">—</div></div>
+        <div class="kpi"><div class="lab">Ocupação</div><div class="val" id="kOcup">—</div><div class="foot" id="kOcupFoot">—</div></div>
+      </div>
+
+      <section class="block">
+        <h2>Para onde vai a receita bruta</h2>
+        <div class="bar" id="bar" role="img" aria-label="Divisão da receita bruta"></div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <section class="block">
+        <h2>Composição da receita</h2>
+        <table class="ledger"><tbody id="ledger"></tbody></table>
+      </section>
+
+      <section class="block">
+        <h2>Comparativo com aluguel tradicional</h2>
+        <div class="compare">
+          <table class="ledger"><tbody id="ledgerTrad"></tbody></table>
+          <div class="diff">
+            <div>
+              <div class="cap">Diferença mensal a favor da temporada</div>
+              <div class="big" id="diffMes">—</div>
+              <div class="cap" id="diffAno">—</div>
+            </div>
+            <div class="yield">
+              <div><b class="p" id="yTemp">—</b><span>Temporada ao ano</span></div>
+              <div><b id="yTrad">—</b><span>Tradicional ao ano</span></div>
+            </div>
+            <div class="cap" id="yBase">—</div>
+          </div>
+        </div>
+      </section>
+
+      <p class="note">Simulação estimativa com base nas premissas informadas. Os resultados variam conforme sazonalidade, localização e gestão, e não representam garantia de rentabilidade. Mês considerado com 30 dias.</p>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const EXEMPLO = {
+    imovel: "", valorImovel: 300000, diaria: 240, noites: 25, reservas: 10, limpeza: 160,
+    plataforma: 18, custos: 700, gestorModo: "pos", gestorPct: 15, retemLimpeza: true,
+    aluguel: 2000, adm: 10, meses: 18
+  };
+  const KEY = "host-calc-v1";
+  const $ = (id) => document.getElementById(id);
+
+  const brl = (v) => (v < 0 ? "- " : "") + "R$ " + Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = (v, d = 2) => (v * 100).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
+  const numFmt = (v, kind) => kind === "int" ? String(Math.round(v)) :
+    v.toLocaleString("pt-BR", { minimumFractionDigits: kind === "money" ? 2 : 0, maximumFractionDigits: 2 });
+
+  // Aceita "1.234,56", "1234,56", "1234.56", "1.500", "R$ 240"
+  function parseBR(s) {
+    s = String(s || "").replace(/[R$\s%]/g, "");
+    if (!s) return 0;
+    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+    const n = parseFloat(s);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  const numIds = ["valorImovel","diaria","noites","reservas","limpeza","plataforma","custos","gestorPct","aluguel","adm","meses"];
+
+  function readState() {
+    const s = { imovel: $("imovel").value.trim(), gestorModo: $("gestorModo").value, retemLimpeza: $("retemLimpeza").checked };
+    numIds.forEach((id) => {
+      const v = parseBR($(id).value);
+      s[id] = $(id).dataset.kind === "int" ? Math.round(v) : v; // inteiros: o cálculo usa o mesmo valor exibido
+    });
+    return s;
+  }
+  function writeState(s) {
+    $("imovel").value = s.imovel || "";
+    $("gestorModo").value = s.gestorModo;
+    $("retemLimpeza").checked = !!s.retemLimpeza;
+    numIds.forEach((id) => { const el = $(id); el.value = numFmt(Number(s[id]) || 0, el.dataset.kind); });
+  }
+
+  function calc(s) {
+    // Mês de 30 dias: noites e ocupação usam o mesmo teto.
+    const noites = Math.min(s.noites, 30);
+    // Cada reserva ocupa ao menos 1 noite: limpeza não pode ser cobrada mais vezes que as noites vendidas.
+    const reservas = Math.min(s.reservas, noites);
+    const recDiarias = s.diaria * noites;
+    const recLimpeza = s.limpeza * reservas;
+    const bruta = recDiarias + recLimpeza;
+    // Plataforma: incide uma única vez sobre o total cobrado do hóspede (diárias + limpeza), como no PDF de referência.
+    const tPlat = Math.min(s.plataforma, 100) / 100;
+    const comPlat = bruta * tPlat;
+    const comPlatLimpeza = recLimpeza * tPlat;
+    // HOST: incide só sobre as diárias, nunca sobre a limpeza (que já é repassada) nem sobre a parte da plataforma no modo "pos".
+    const tGest = Math.min(s.gestorPct, 100) / 100;
+    let baseGestor = 0;
+    if (s.gestorModo === "pos") baseGestor = recDiarias * (1 - tPlat);
+    else if (s.gestorModo === "bruto") baseGestor = recDiarias;
+    const comGestor = baseGestor * tGest;
+    // Limpeza repassada: o valor bruto da taxa sai uma vez; a comissão da plataforma sobre ela já está em comPlat.
+    const limpezaRetida = s.retemLimpeza ? recLimpeza : 0;
+    const liquida = bruta - comPlat - comGestor - limpezaRetida - s.custos;
+
+    const admV = s.aluguel * Math.min(s.adm, 100) / 100;
+    const interm = s.meses > 0 ? s.aluguel / s.meses : 0;
+    const liqTrad = s.aluguel - admV - interm;
+
+    return {
+      noites, reservas, recDiarias, recLimpeza, bruta, comPlat, comPlatLimpeza, comGestor, limpezaRetida, liquida,
+      ajusteNoites: s.noites > 30, ajusteReservas: s.reservas > noites,
+      ocupacao: Math.min(noites / 30, 1),
+      margem: bruta > 0 ? liquida / bruta : 0,
+      admV, interm, liqTrad,
+      diff: liquida - liqTrad,
+      yTemp: s.valorImovel > 0 ? liquida * 12 / s.valorImovel : 0,
+      yTrad: s.valorImovel > 0 ? liqTrad * 12 / s.valorImovel : 0
+    };
+  }
+
+  function gestorLabel(s) {
+    if (s.gestorModo === "nenhum") return "Não, gestão própria";
+    const p = numFmt(s.gestorPct, "pct") + "%";
+    return s.gestorModo === "pos" ? "Sim, " + p + " sobre diárias após a plataforma" : "Sim, " + p + " sobre diárias brutas";
+  }
+
+  function rows(s, r) {
+    const out = [
+      ["Receita de diárias", r.recDiarias, numFmt(r.noites, "int") + " noites × " + brl(s.diaria)],
+      ["Receita de limpeza", r.recLimpeza, numFmt(r.reservas, "int") + " reservas × " + brl(s.limpeza)],
+      ["Comissão da plataforma", -r.comPlat, numFmt(s.plataforma, "pct") + "% sobre a receita bruta" +
+        (r.comPlatLimpeza > 0 ? ", inclui " + brl(r.comPlatLimpeza) + " sobre a limpeza" : "")]
+    ];
+    if (s.gestorModo !== "nenhum") out.push(["Comissão da HOST", -r.comGestor, gestorLabel(s).replace("Sim, ", "")]);
+    if (s.retemLimpeza) out.push(["Taxa de limpeza repassada", -r.limpezaRetida, "valor bruto da taxa, repassado à equipe de limpeza"]);
+    out.push(["Custos fixos mensais", -s.custos, ""]);
+    return out;
+  }
+  function tradRows(s, r) {
+    const out = [
+      ["Aluguel bruto", s.aluguel, ""],
+      ["Administradora (" + numFmt(s.adm, "pct") + "%)", -r.admV, ""]
+    ];
+    if (s.meses > 0) out.push(["1º aluguel diluído em " + numFmt(s.meses, "int") + " meses", -r.interm, ""]);
+    return out;
+  }
+
+  function esc(t) { const d = document.createElement("div"); d.textContent = t; return d.innerHTML; }
+  function ledgerHTML(list, totalLabel, total) {
+    return list.map(([l, v, sub]) =>
+      `<tr class="${v < 0 ? "neg" : ""}"><td>${esc(l)}${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</td><td>${brl(v)}</td></tr>`
+    ).join("") + `<tr class="total"><td>${esc(totalLabel)}</td><td>${brl(total)}</td></tr>`;
+  }
+
+  let state, res;
+  function render() {
+    state = readState();
+    res = calc(state);
+    $("gestorPctField").hidden = state.gestorModo === "nenhum";
+
+    $("kBruta").textContent = brl(res.bruta);
+    $("kLiquida").textContent = brl(res.liquida);
+    $("kMargem").textContent = "margem de " + pct(res.margem, 1) + " sobre a bruta";
+    $("kOcup").textContent = Math.round(res.ocupacao * 100) + "%";
+    $("kOcupFoot").textContent = numFmt(res.noites, "int") + " de 30 noites";
+
+    // Barra de divisão da receita bruta
+    const segs = [
+      ["Plataforma", res.comPlat, "#C9B6DD"],
+      ["HOST", res.comGestor, "#B48AD6"],
+      ["Limpeza", res.limpezaRetida, "#DCCBEC"],
+      ["Custos fixos", s_custos(), "#A99DB5"],
+      ["Líquido do proprietário", Math.max(res.liquida, 0), "#8A05BE"]
+    ].filter((x) => x[1] > 0);
+    function s_custos() { return Math.min(state.custos, Math.max(res.bruta - res.comPlat - res.comGestor - res.limpezaRetida, 0)); }
+    const tot = segs.reduce((a, x) => a + x[1], 0) || 1;
+    $("bar").innerHTML = segs.map(([n, v, c]) => `<div style="width:${(v / tot * 100).toFixed(2)}%;background:${c}" title="${n}"></div>`).join("");
+    $("legend").innerHTML = segs.map(([n, v, c]) => `<span><i style="background:${c}"></i>${n} ${pct(v / tot, 0)}</span>`).join("");
+
+    $("ledger").innerHTML = ledgerHTML(rows(state, res), "Receita líquida mensal", res.liquida);
+    $("ledgerTrad").innerHTML = ledgerHTML(tradRows(state, res), "Líquido tradicional", res.liqTrad);
+
+    const d = $("diffMes");
+    d.textContent = (res.diff >= 0 ? "+ " : "") + brl(res.diff);
+    d.className = "big " + (res.diff >= 0 ? "pos" : "neg");
+    $("diffAno").textContent = (res.diff >= 0 ? "+ " : "") + brl(res.diff * 12) + " em 12 meses";
+    const temValor = state.valorImovel > 0;
+    $("yTemp").textContent = temValor ? pct(res.yTemp) : "—";
+    $("yTrad").textContent = temValor ? pct(res.yTrad) : "—";
+    $("yBase").textContent = temValor ? "Rentabilidade líquida sobre imóvel de " + brl(state.valorImovel) : "Informe o valor do imóvel para ver a rentabilidade anual.";
+
+    $("warnNoites").hidden = !res.ajusteNoites;
+    $("warnReservas").hidden = !res.ajusteReservas;
+
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  // Inicialização
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  writeState(Object.assign({}, EXEMPLO, saved || {}));
+  render();
+
+  const form = $("form");
+  form.addEventListener("input", render);
+  form.addEventListener("change", render);
+  form.addEventListener("submit", (e) => e.preventDefault());
+  numIds.forEach((id) => $(id).addEventListener("blur", (e) => {
+    e.target.value = numFmt(parseBR(e.target.value), e.target.dataset.kind);
+  }));
+  $("btnReset").addEventListener("click", () => { writeState(EXEMPLO); render(); toast("Valores de exemplo restaurados"); });
+
+  let tt;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), 3200); }
+
+  // ---------- PDF ----------
+  function buildPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, M = 16, CW = W - 2 * M;
+    const P = [138, 5, 190], LIL = [244, 238, 250], LINE = [230, 221, 240], INK = [43, 37, 51], MUT = [110, 101, 120], GOOD = [30, 138, 76], BAD = [179, 38, 30];
+    let y = 16;
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    // As fontes padrão do PDF só têm caracteres latinos: troca o que não existe nelas (emojis, aspas curvas etc.).
+    const safe = (t) => String(t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/–/g, "-")
+      .replace(/²/g, "2").replace(/³/g, "3")
+      .replace(/[^\x20-\x7E -ÿ—]/g, "").replace(/ {2,}/g, " ");
+    const rawText = doc.text.bind(doc);
+    doc.text = (t, ...a) => rawText(Array.isArray(t) ? t.map(safe) : safe(t), ...a);
+    const need = (h) => { if (y + h > 272) { doc.addPage(); y = 20; } };
+
+    // Cabeçalho
+    doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(...P);
+    doc.text("HOST", M, y + 4);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...MUT);
+    doc.text("Gestão Imobiliária", M + 25, y + 4);
+    doc.text("Gerado em " + hoje, W - M, y + 4, { align: "right" });
+    y += 12;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(...INK);
+    doc.text("Simulação de rentabilidade em temporada", M, y);
+    if (state.imovel) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...MUT);
+      // quebra também palavras sem espaço que passariam da margem
+      const nome = doc.splitTextToSize(safe(state.imovel).replace(/(\S{40})(?=\S)/g, "$1 "), CW).slice(0, 2);
+      y += 6; doc.text(nome, M, y); y += (nome.length - 1) * 4.5;
+    }
+    y += 4; doc.setDrawColor(...P); doc.setLineWidth(0.6); doc.line(M, y, W - M, y);
+    y += 8;
+
+    function title(t) { doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...P); doc.text(t.toUpperCase(), M, y); y += 5; }
+    function line(label, value, opts = {}) {
+      const x0 = opts.x || M, w = opts.w || CW;
+      doc.setFont("helvetica", opts.bold ? "bold" : "normal"); doc.setFontSize(opts.size || 9.5);
+      doc.setTextColor(...(opts.color || INK)); doc.text(label, x0, y);
+      doc.setTextColor(...(opts.vcolor || opts.color || INK)); doc.text(value, x0 + w, y, { align: "right" });
+      y += 2.4; if (!opts.noline) { doc.setDrawColor(...(opts.lc || LINE)); doc.setLineWidth(0.2); doc.line(x0, y, x0 + w, y); }
+      y += 4.4;
+    }
+
+    // Premissas (duas colunas)
+    title("Premissas da simulação");
+    const prem = [
+      ["Diária média", brl(state.diaria)], ["Noites ocupadas/mês", numFmt(res.noites, "int")],
+      ["Reservas/mês", numFmt(res.reservas, "int")], ["Limpeza por reserva", brl(state.limpeza)],
+      ["Comissão plataforma", numFmt(state.plataforma, "pct") + "%"], ["Custos fixos mensais", brl(state.custos)],
+      ["Gestão HOST", state.gestorModo === "nenhum" ? "Não" : numFmt(state.gestorPct, "pct") + "% " + (state.gestorModo === "pos" ? "pós plataforma" : "sobre diárias")],
+      ["Limpeza repassada", state.retemLimpeza ? "Sim" : "Não"]
+    ];
+    const colW = (CW - 10) / 2, y0 = y;
+    prem.forEach((p, i) => {
+      if (i === 4) y = y0;
+      line(p[0], p[1], { x: i < 4 ? M : M + colW + 10, w: colW });
+    });
+    y += 4;
+
+    // Métricas
+    const bw = (CW - 8) / 3, bh = 20;
+    const kp = [["Receita bruta", brl(res.bruta), false], ["Receita líquida", brl(res.liquida), true], ["Ocupação", Math.round(res.ocupacao * 100) + "%", false]];
+    kp.forEach(([l, v, hero], i) => {
+      const x = M + i * (bw + 4);
+      doc.setFillColor(...(hero ? P : LIL)); doc.roundedRect(x, y, bw, bh, 3, 3, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...(hero ? [255, 255, 255] : INK));
+      doc.text(v, x + bw / 2, y + 9, { align: "center" });
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...(hero ? [235, 215, 247] : MUT));
+      doc.text(l, x + bw / 2, y + 15, { align: "center" });
+    });
+    y += bh + 10;
+
+    // Composição
+    const comp = rows(state, res);
+    need(12 + (comp.length + 1) * 6.8);
+    title("Composição da receita mensal");
+    comp.forEach(([l, v]) => line(l, brl(v)));
+    y -= 2; doc.setDrawColor(...P); doc.setLineWidth(0.6); doc.line(M, y - 2.4, W - M, y - 2.4); y += 2.5;
+    line("Receita líquida mensal", brl(res.liquida), { bold: true, size: 11, vcolor: P, noline: true });
+    y += 4;
+
+    // Comparativo
+    const tr = tradRows(state, res);
+    const boxH = 12 + (tr.length + 1) * 6.8 + 8 + 6.8;
+    need(boxH + 4);
+    doc.setFillColor(...LIL); doc.roundedRect(M, y - 5, CW, boxH, 3, 3, "F");
+    const ix = M + 6, iw = CW - 12;
+    y += 2;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...P); doc.text("COMPARATIVO COM ALUGUEL TRADICIONAL", ix, y); y += 6;
+    tr.forEach(([l, v]) => line(l, brl(v), { x: ix, w: iw, lc: [233, 221, 246] }));
+    line("Líquido tradicional", brl(res.liqTrad), { x: ix, w: iw, bold: true, lc: [233, 221, 246] });
+    y += 1;
+    line("Diferença mensal a favor da temporada", (res.diff >= 0 ? "+ " : "") + brl(res.diff), { x: ix, w: iw, bold: true, size: 11, vcolor: res.diff >= 0 ? GOOD : BAD, noline: true });
+    line("Diferença em 12 meses", (res.diff >= 0 ? "+ " : "") + brl(res.diff * 12), { x: ix, w: iw, vcolor: res.diff >= 0 ? GOOD : BAD, noline: true });
+    y += 8;
+
+    // Rentabilidade
+    need(36);
+    title("Rentabilidade anual líquida");
+    const rw = (CW - 4) / 2, temValor = state.valorImovel > 0;
+    [["Temporada", temValor ? pct(res.yTemp) + " a.a." : "—", true], ["Tradicional", temValor ? pct(res.yTrad) + " a.a." : "—", false]].forEach(([l, v, hero], i) => {
+      const x = M + i * (rw + 4);
+      doc.setDrawColor(...(hero ? P : LINE)); doc.setLineWidth(hero ? 0.6 : 0.3); doc.roundedRect(x, y, rw, 18, 3, 3, "S");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(...(hero ? P : INK));
+      doc.text(v, x + rw / 2, y + 8.5, { align: "center" });
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...MUT);
+      doc.text(l, x + rw / 2, y + 14, { align: "center" });
+    });
+    y += 24;
+    doc.setFontSize(8.5); doc.setTextColor(...MUT);
+    doc.text((temValor ? "Sobre o valor do imóvel de " + brl(state.valorImovel) + ". " : "Valor do imóvel não informado. ") + "Mês considerado com 30 dias.", M, y);
+
+    // Rodapé em todas as páginas
+    const pages = doc.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p);
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(M, 280, W - M, 280);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...MUT);
+      doc.text(doc.splitTextToSize("Simulação estimativa com base nas premissas informadas. Os resultados variam conforme sazonalidade, localização e gestão, e não representam garantia de rentabilidade.", CW - 40), M, 285);
+      doc.setFont("helvetica", "bold"); doc.setTextColor(...P); doc.text("HOST Gestão Imobiliária", W - M, 285, { align: "right" });
+    }
+    return doc;
+  }
+
+  function fileName() {
+    const base = (state.imovel || "simulacao").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "simulacao";
+    return "HOST-" + base + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
+  }
+
+  $("btnPdf").addEventListener("click", async () => {
+    if (!window.jspdf) { toast("Não foi possível carregar o gerador de PDF. Verifique a conexão e recarregue."); return; }
+    const btn = $("btnPdf"); btn.disabled = true;
+    try {
+      render();
+      const doc = buildPdf();
+      const name = fileName();
+      let downloads = null;
+      if (window.claude && typeof window.claude.use === "function") {
+        try { downloads = await window.claude.use("downloads"); } catch (e) { downloads = null; }
+      }
+      if (downloads) {
+        try { await downloads.save({ filename: name, data: doc.output("blob") }); toast("PDF salvo"); }
+        catch (e) { if (e && e.code !== "declined") toast("Não foi possível salvar o PDF aqui."); }
+      } else {
+        doc.save(name); // hospedagem externa: download direto do navegador
+      }
+    } finally { btn.disabled = false; }
+  });
+
+  window.__hostCalc = { calc, parseBR, EXEMPLO, buildPdf, render };
+})();
+</script>
+</body>
+</html>
